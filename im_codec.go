@@ -1,8 +1,10 @@
 package main
 
 import (
+	"awesomeProject/common"
 	"github.com/davyxu/cellnet"
 	"github.com/davyxu/golog"
+	"reflect"
 )
 
 var codecLogger = golog.New("codec")
@@ -21,13 +23,13 @@ func (self *ImCodec) MimeType() string {
 
 // 将结构体编码为JSON的字节数组
 func (self *ImCodec) Encode(msgObj interface{}, ctx cellnet.ContextSet) (data interface{}, err error) {
-	protocol := msgObj.(Protocol)
+	protocol := msgObj.(common.Protocol)
 
-	ret := ImBuffer{}
-	protocol.marshal(&ret)
+	ret := common.Octets{}
+	protocol.Marshal(&ret)
 
-	return ret.data, nil
-	//return json.Marshal(msgObj.(Protocol))
+	return ret.Data, nil
+	//return json.Marshal(msgObj.(common.Protocol))
 
 }
 
@@ -38,15 +40,16 @@ func (self *ImCodec) Decode(data interface{}, msgObj interface{}) error {
 
 	bytes := data.([]byte)
 
-	b := ImBuffer{bytes, 0, 0}
-	msgId := b.readInt()
+	b := common.Octets{bytes, 0, 0}
+	msgId := b.ReadInt()
 
 	msg := msgs[msgId]
-	protocol := msg.(Protocol)
-	protocol.unmarshal(&b)
+	protocol := msg.(common.Protocol)
+	protocol.Unmarshal(&b)
 
 	return nil
 }
+
 //
 //func init() {
 //	imCodec := new(ImCodec)
@@ -55,3 +58,14 @@ func (self *ImCodec) Decode(data interface{}, msgObj interface{}) error {
 //	// 注册编码器
 //	codec.RegisterCodec(imCodec)
 //}
+
+//
+//type common.Protocol interface {
+//	getMsgId() int32
+//	marshal(out *common.Octets)
+//	unmarshal(in *common.Octets)
+//}
+
+var (
+	msgs = make(map[int32]reflect.Type)
+)

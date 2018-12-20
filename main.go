@@ -27,13 +27,12 @@ func swap(aa, bb string) (string, string) {
 }
 
 func change(aaa *int) {
-	* aaa += 100
+	*aaa += 100
 }
-
 
 func main222() {
 
-	//ClientConnection()
+	//ImClient()
 
 	const (
 		a = iota
@@ -83,7 +82,7 @@ func main222() {
 	case grade == "F":
 		fmt.Printf("不及格\n")
 	default:
-		fmt.Printf("差\n");
+		fmt.Printf("差\n")
 	}
 	fmt.Printf("你的等级是 %s\n", grade)
 
@@ -308,15 +307,15 @@ func main222() {
 		}
 
 		captial1, ok1 := countryCapitalMap["France"]
-		if (ok1) {
+		if ok1 {
 			fmt.Printf("Capital of %s is %\n", captial1, ok1)
 		} else {
 			fmt.Println("Capital of France is not present")
 		}
 
-		delete(countryCapitalMap, "France");
+		delete(countryCapitalMap, "France")
 		captial2, ok2 := countryCapitalMap["France"]
-		if (ok2) {
+		if ok2 {
 			fmt.Println("Capital of France is", captial2)
 		} else {
 			fmt.Println("Capital of France is not present")
@@ -461,10 +460,10 @@ var (
 )
 
 func printBook(book *Books) {
-	fmt.Printf("Book title : %s\n", book.title);
-	fmt.Printf("Book author : %s\n", book.author);
-	fmt.Printf("Book subject : %s\n", book.subject);
-	fmt.Printf("Book book_id : %d\n", book.book_id);
+	fmt.Printf("Book title : %s\n", book.title)
+	fmt.Printf("Book author : %s\n", book.author)
+	fmt.Printf("Book subject : %s\n", book.subject)
+	fmt.Printf("Book book_id : %d\n", book.book_id)
 }
 
 type Books struct {

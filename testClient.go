@@ -1,20 +1,51 @@
 package main
 
 import (
+	"awesomeProject/common"
+	"awesomeProject/gen/cfg/cfg/skill"
+	"awesomeProject/gen/msg/msg/gs/login"
+	. "awesomeProject/gen/msg/msg/link"
 	"fmt"
 	"net"
 	"os"
+	"path"
 	"reflect"
 	"sync"
 )
 
-type ClientConnection struct {
+type ImClient struct {
 	conn   *net.TCPConn
 	userId int64
 	state  int
 }
 
 func main() {
+
+	var array = [3]int{0, 1, 2}
+	var array2 = &array
+
+	array2[2] = 5
+	fmt.Println(array, *array2)
+
+	testLoadFile()
+
+	TestCfg()
+
+	startClient()
+}
+
+func testLoadFile() {
+	filePath := path.Join("gen/config/", "buffcfg.data")
+	common.BinRead(filePath)
+}
+
+func TestCfg() {
+	cfg := skill.SkillCfg{}
+	fmt.Println(cfg)
+}
+
+func startClient() {
+
 	fmt.Println(" start client !!!!")
 
 	var buf [512]byte
@@ -38,46 +69,30 @@ func main() {
 
 	n, err := client.conn.Read(buf[0:])
 
-	for ; n > 0; {
+	for n > 0 {
 		checkErr(err)
-		fmt.Printf(" read data n = %v, err = %v \n", n, err)
+		fmt.Printf(" read Data n = %v, err = %v \n", n, err)
 
 		rev := make([]byte, n)
 		copy(rev, buf[0:n])
 
-		fmt.Println(" rev data from server ", rAddr.String(), rev, len(rev), cap(rev))
+		fmt.Println("===== rev Data from server ", rAddr.String(), rev, len(rev), cap(rev))
 		//fmt.Println("Reply from server ", rAddr.String(), string(buf[0:n]))
 
-		revBuffer := ImBuffer{rev, 0, 0}
-		msgSize := revBuffer.readInt()
-		msgType := revBuffer.readInt()
+		revBuffer := common.Octets{rev, 0, 0}
+		msgSize := revBuffer.ReadInt()
+		msgType := revBuffer.ReadInt()
 		fmt.Println(" rev msg ", msgSize, msgType)
 
 		message := msgIdMap[msgType].New()
-		message.decode(&revBuffer)
+		message.Unmarshal(&revBuffer)
 
-		fmt.Println("===== rev msg type ", reflect.TypeOf(message))
+		fmt.Println("rev msg type ", reflect.TypeOf(message))
 		handler, _ := msgHandlers.Load(msgType)
 		fmt.Println(" rev msg ", msgSize, msgType, handler, reflect.TypeOf(message))
 
-		//go func() { handler.(func(client *ClientConnection, msg Message))(client, message) }()
-		handler.(func(client *ClientConnection, msg Message))(client, message)
-
-		//
-		//switch msgType {
-		//case 1:
-		//	msg := SChallenge{}
-		//	msg.decode(&revBuffer)
-		//	fmt.Println("rece msg ", msg, msg.nonce)
-		//
-		//	auth := buildAuth("wangbo", msg.nonce)
-		//	n, err = conn.Write(auth)
-		//	fmt.Println(" send data to server ", rAddr.String(), auth, n, err)
-		//	checkErr(err)
-		//}
-		//msg := GAnnouceServerInfo{}
-		//msg.decode(&revBuffer)
-		//fmt.Println("rece msg ", msg)
+		go func() { handler.(func(client *ImClient, msg common.IMarshal))(client, message) }()
+		//handler.(func(client *ImClient, msg common.IMarshal))(client, message)
 
 		fmt.Println(" after send ")
 		n, err = client.conn.Read(buf[0:])
@@ -94,86 +109,13 @@ func checkErr(err error) {
 	}
 }
 
-type SChallenge struct {
-	nonce *ImBuffer
-}
-
-func (msg *SChallenge) encode(buffer *ImBuffer) {
-	buffer.writeBuffer(msg.nonce)
-}
-
-func (msg *SChallenge) decode(buffer *ImBuffer) {
-	msg.nonce = buffer.readBuffer()
-
-	fmt.Println(" rev nonce", msg.nonce)
-}
-
-func (msg *SChallenge) New() Message {
-	return &SChallenge{}
-}
-
-func (msg *SChallenge) getMsgId() int32 {
-	return 1
-}
-
-func buildAuth(name string, nonce *ImBuffer) []byte {
-	msg := CAuth{name, nonce}
-	buffer := ImBuffer{}
-	buffer.writeInt(2) //msg id = 2
-	msg.encode(&buffer)
-
-	fmt.Println(" auth length ", buffer)
-
-	msgLength := buffer.length()
-
-	fmt.Println(" auth length ", msgLength)
-	buffer2 := ImBuffer{}
-	//buffer2.writeMsgSize(msgLength)
-	buffer2.writeBytes(buffer.data)
-	//buffer2.writeBuffer(&buffer)
-
-	fmt.Println(" auth all length ", len(buffer2.data), buffer2.data)
-
-	return buffer2.data
-}
-
-type GAnnouceServerInfo struct {
-	typeId   int32
-	serverId int32
-	extra    string
-}
-
-func (msg *GAnnouceServerInfo) encode(buffer *ImBuffer) {
-	buffer.writeInt(msg.typeId)
-	buffer.writeInt(msg.serverId)
-	buffer.writeString(msg.extra)
-}
-
-func (msg *GAnnouceServerInfo) decode(buffer *ImBuffer) {
-	msg.typeId = buffer.readInt()
-	msg.serverId = buffer.readInt()
-
-	fmt.Println(" GAnnouceServerInfo ", msg.typeId, msg.serverId)
-	msg.extra = buffer.readString()
-}
-
-func getMessage(msgId int32) Message {
-	switch msgId {
-	case 1:
-		return &SChallenge{}
-	case 2:
-		return &CAuth{}
-	default:
-		panic(" no such msgId " + string(msgId))
-	}
-}
-
-type MsgHandle func(client ClientConnection, msg interface{})
+type MsgHandle func(client ImClient, msg interface{})
 
 var (
-	msgIdMap    = make(map[int32]Message, 100)
+	msgIdMap    = make(map[int32]common.IMarshal, 100)
 	msgHandlers = sync.Map{}
-	client      = &ClientConnection{state: LINKING}
+
+	client = &ImClient{state: LINKING}
 
 	LINKING  = 0
 	LINKED   = 1
@@ -181,123 +123,37 @@ var (
 	LOGINED  = 3
 )
 
-type CAuth struct {
-	username string
-	nonce    *ImBuffer
-}
-
-func (msg *CAuth) encode(buffer *ImBuffer) {
-	buffer.writeString(msg.username)
-	buffer.writeBuffer(msg.nonce)
-}
-
-func (msg *CAuth) decode(buffer *ImBuffer) {
-	msg.username = buffer.readString()
-	msg.nonce = buffer.readBuffer()
-}
-
-func (msg *CAuth) New() Message {
-	return &CAuth{}
-}
-
-func (msg *CAuth) getMsgId() int32 {
-	return 2
-}
-
-func handleSChallenge(client *ClientConnection, msg Message) {
-	challenge := msg.(*SChallenge)
-	fmt.Println(" handleSChallenge ", msg)
-
-	fmt.Println("rece msg ", msg, challenge.nonce)
-
-	retMsg := CAuth{"wangbo", challenge.nonce}
-
-	sendMessage(client, &retMsg)
-
-	//auth := buildAuth("wangbo", challenge.nonce)
-	//n, err := client.conn.Write(auth)
-	//fmt.Println(" send data to server ", client.conn.RemoteAddr().String(), auth, n, err)
-	//checkErr(err)
-}
-
-func handleCAuth(client ClientConnection, msg Message) {
-	fmt.Println(" handleCAuth ", msg)
-}
-
-func handleSAuth(client *ClientConnection, msg Message) {
-	auth := msg.(*SAuth)
-
-	fmt.Println(" handleSAuth ", auth.username, auth.userid, auth.err)
-
-	if auth.err == 0 {
-		client.userId = auth.userid
-		fmt.Println(" get user Id ", client.userId)
-		retMsg := CBindServer{30001}
-		sendMessage(client, &retMsg)
-	}
-}
-
-func handleSBindServer(client *ClientConnection, msg Message) {
-	bindServer := msg.(*SBindServer)
-	fmt.Println(" bind server ret ", bindServer.err, bindServer.serverId)
-
-	fmt.Println(" send login msg ", client.userId)
-
-	if bindServer.err == 0 {
-		client.state = LINKED
-		sendMessage(client, &CLogin{client.userId})
-	}
-}
-
-func handleKeepAlive(client *ClientConnection, msg Message) {
-	alive := msg.(*KeepAlive)
-	fmt.Println(" handleKeepAlive ", alive)
-
-}
-
-func sendMessage(client *ClientConnection, msg Message) {
+func sendMessage(client *ImClient, msg common.Protocol) {
 
 	var m1 = msg
 	if client.state >= LINKED {
 		gsMsg := CForward{}
-		gsMsg.msgId = msg.getMsgId()
-		buffer := ImBuffer{}
-		msg.encode(&buffer)
-		gsMsg.data = &buffer
+		gsMsg.Type_ = msg.GetMsgId()
+		buffer := common.Octets{}
+		msg.Marshal(&buffer)
+		gsMsg.Data_ = buffer
 
 		m1 = &gsMsg
 	}
 
-	//auth := buildAuth("wangbo", challenge.nonce)
+	buffer := common.Octets{}
+	buffer.WriteInt(m1.GetMsgId())
+	m1.Marshal(&buffer)
 
-	//msg := CAuth{name, nonce}
-	buffer := ImBuffer{}
-	buffer.writeInt(m1.getMsgId())
-	m1.encode(&buffer)
+	buffer2 := common.Octets{}
+	buffer2.WriteBytes(buffer.Data)
 
-	//fmt.Println(" auth length ", buffer)
-
-	//msgLength := buffer.length()
-
-	//fmt.Println(" auth length ", msgLength)
-	buffer2 := ImBuffer{}
-	//buffer2.writeMsgSize(msgLength)
-	buffer2.writeBytes(buffer.data)
-	//buffer2.writeBuffer(&buffer)
-
-	//fmt.Println(" auth all length ", len(buffer2.data), buffer2.data)
-
-	n, err := client.conn.Write(buffer2.data)
-	fmt.Printf(" send data to server msg = %v %v, write bytes =  %v, err = %v \n", reflect.TypeOf(msg), msg, n, err)
+	n, err := client.conn.Write(buffer2.Data)
+	fmt.Printf(" send Data to server msg = %v %v, write bytes =  %v, err = %v \n", reflect.TypeOf(msg), msg, n, err)
 	checkErr(err)
 }
 
 func init() {
 
-	allMessages := []Message{&SChallenge{}, &CAuth{}, &SAuth{}, &CBindServer{}, &SBindServer{}, &CLogin{}, &KeepAlive{}, &CForward{}}
+	allMessages := []common.Protocol{&SChallenge{}, &CAuth{}, &SAuth{}, &CBindServer{}, &SBindServer{}, &login.CLogin{}, &KeepAlive{}, &CForward{}}
 
 	for _, m := range allMessages {
-		msgIdMap[m.getMsgId()] = m
+		msgIdMap[m.GetMsgId()] = m
 	}
 
 	msgHandlers.Store(int32(0), handleKeepAlive)
@@ -312,139 +168,49 @@ func init() {
 
 }
 
-type Message interface {
-	encode(buffer *ImBuffer)
-	decode(buffer *ImBuffer)
-	New() Message
-	getMsgId() int32
+func handleSChallenge(client *ImClient, msg common.IMarshal) {
+	challenge := msg.(*SChallenge)
+	fmt.Println(" handleSChallenge ", msg)
+
+	fmt.Println("rece msg ", msg, challenge.Nonce_)
+
+	retMsg := CAuth{"wangbo", challenge.Nonce_}
+
+	sendMessage(client, &retMsg)
+
 }
 
-type SAuth struct {
-	err      int32
-	username string
-	userid   int64
+func handleCAuth(client ImClient, msg common.IMarshal) {
+	fmt.Println(" handleCAuth ", msg)
 }
 
-func (msg *SAuth) encode(buffer *ImBuffer) {
-	buffer.writeInt(msg.err)
-	buffer.writeString(msg.username)
-	buffer.writeLong(msg.userid)
+func handleSAuth(client *ImClient, msg common.IMarshal) {
+	auth := msg.(*SAuth)
+
+	fmt.Println(" handleSAuth ", auth.Username_, auth.Userid_, auth.Err_)
+
+	if auth.Err_ == 0 {
+		client.userId = auth.Userid_
+		fmt.Println(" get user Id ", client.userId)
+		retMsg := CBindServer{30001}
+		sendMessage(client, &retMsg)
+	}
 }
 
-func (msg *SAuth) decode(buffer *ImBuffer) {
-	msg.err = buffer.readInt()
-	msg.username = buffer.readString()
-	msg.userid = buffer.readLong()
+func handleSBindServer(client *ImClient, msg common.IMarshal) {
+	bindServer := msg.(*SBindServer)
+	fmt.Println(" bind server ret ", bindServer.Err_, bindServer.Serverid_)
+
+	fmt.Println(" send login msg ", client.userId)
+
+	if bindServer.Err_ == 0 {
+		client.state = LINKED
+		sendMessage(client, &login.CLogin{client.userId})
+	}
 }
 
-func (msg *SAuth) New() Message {
-	return &SAuth{}
-}
+func handleKeepAlive(client *ImClient, msg common.IMarshal) {
+	alive := msg.(*KeepAlive)
+	fmt.Println(" handleKeepAlive ", alive)
 
-func (msg *SAuth) getMsgId() int32 {
-	return 3
-}
-
-type CBindServer struct {
-	serverId int32
-}
-
-func (msg *CBindServer) getMsgId() int32 {
-	return 6
-}
-
-func (msg *CBindServer) encode(buffer *ImBuffer) {
-	buffer.writeInt(msg.serverId)
-}
-
-func (msg *CBindServer) decode(buffer *ImBuffer) {
-	msg.serverId = buffer.readInt()
-}
-
-func (msg *CBindServer) New() Message {
-	return &CBindServer{}
-}
-
-type SBindServer struct {
-	err      int32
-	serverId int32
-}
-
-func (msg *SBindServer) encode(buffer *ImBuffer) {
-	buffer.writeInt(msg.err)
-	buffer.writeInt(msg.serverId)
-}
-
-func (msg *SBindServer) decode(buffer *ImBuffer) {
-	msg.err = buffer.readInt()
-	msg.serverId = buffer.readInt()
-}
-
-func (msg *SBindServer) New() Message {
-	return &SBindServer{}
-}
-
-func (*SBindServer) getMsgId() int32 {
-	return 7
-}
-
-type CLogin struct {
-	userId int64
-}
-
-func (msg *CLogin) encode(buffer *ImBuffer) {
-	buffer.writeLong(msg.userId)
-}
-
-func (msg *CLogin) decode(buffer *ImBuffer) {
-	msg.userId = buffer.readLong()
-}
-
-func (msg *CLogin) New() Message {
-	return &CLogin{}
-}
-
-func (msg *CLogin) getMsgId() int32 {
-	return 60768
-}
-
-type KeepAlive struct {
-}
-
-func (*KeepAlive) encode(buffer *ImBuffer) {
-}
-
-func (*KeepAlive) decode(buffer *ImBuffer) {
-}
-
-func (*KeepAlive) New() Message {
-	return &KeepAlive{}
-}
-
-func (*KeepAlive) getMsgId() int32 {
-	return 0
-}
-
-//// gen code
-type CForward struct {
-	msgId int32
-	data  *ImBuffer
-}
-
-func (msg *CForward) encode(buffer *ImBuffer) {
-	buffer.writeInt(msg.msgId)
-	buffer.writeBuffer(msg.data)
-}
-
-func (msg *CForward) decode(buffer *ImBuffer) {
-	msg.msgId = buffer.readInt()
-	msg.data = buffer.readBuffer()
-}
-
-func (msg *CForward) New() Message {
-	return &CForward{0, &ImBuffer{}}
-}
-
-func (msg *CForward) getMsgId() int32 {
-	return 4
 }

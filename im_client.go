@@ -2,15 +2,12 @@ package main
 
 import (
 	"bufio"
-	"fmt"
 	"github.com/davyxu/cellnet"
-	"github.com/davyxu/cellnet/codec"
 	"github.com/davyxu/cellnet/examples/chat/proto"
 	"github.com/davyxu/cellnet/peer"
 	"github.com/davyxu/cellnet/proc"
 	"github.com/davyxu/golog"
 	"os"
-	"reflect"
 	"strings"
 
 	_ "github.com/davyxu/cellnet/peer/tcp"
@@ -79,20 +76,21 @@ func Client() {
 	})
 }
 
-func init_client() {
-
-	fmt.Println(" in in init codec ")
-
-	imCodec := new(ImCodec)
-
-	// 注册编码器
-	codec.RegisterCodec(imCodec)
-
-	fmt.Println(" init codec ", imCodec)
-
-	cellnet.RegisterMessageMeta(&cellnet.MessageMeta{
-		Codec: codec.MustGetCodec("ImCodes"),
-		Type:  reflect.TypeOf((*SChallenge)(nil)).Elem(),
-		ID:    1,
-	})
-}
+//
+//func init_client() {
+//
+//	fmt.Println(" in in init codec ")
+//
+//	imCodec := new(ImCodec)
+//
+//	// 注册编码器
+//	codec.RegisterCodec(imCodec)
+//
+//	fmt.Println(" init codec ", imCodec)
+//
+//	cellnet.RegisterMessageMeta(&cellnet.MessageMeta{
+//		Codec: codec.MustGetCodec("ImCodes"),
+//		Type:  reflect.TypeOf((*SChallenge)(nil)).Elem(),
+//		ID:    1,
+//	})
+//}
