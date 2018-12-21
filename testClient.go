@@ -2,13 +2,12 @@ package main
 
 import (
 	"awesomeProject/common"
-	"awesomeProject/gen/cfg/cfg/skill"
+	"awesomeProject/gen/cfg/cfg"
 	"awesomeProject/gen/msg/msg/gs/login"
 	. "awesomeProject/gen/msg/msg/link"
 	"fmt"
 	"net"
 	"os"
-	"path"
 	"reflect"
 	"sync"
 )
@@ -25,23 +24,50 @@ func main() {
 	var array2 = &array
 
 	array2[2] = 5
-	fmt.Println(array, *array2)
+	fmt.Println("array 111 ", array, *array2)
+	fmt.Println("array 2222 ", array, array2)
 
-	testLoadFile()
+	//testLoadFile()
 
-	TestCfg()
+	//TestCfg()
 
-	startClient()
+	//startClient()
 }
 
 func testLoadFile() {
-	filePath := path.Join("gen/config/", "buffcfg.data")
-	common.BinRead(filePath)
+	//filePath := path.Join("gen/config/", "buffcfg.data")
+	//readBytes := common.BinRead(filePath)
+	//octets := common.Octets{}
+	//octets.Data = readBytes
+	//
+	//fmt.Println("octets ", octets)
+	//
+	//i := octets.ReadInt()
+	//allBuffCfgs := make(map[int32]buff.BuffCfg, i)
+	//for ; i > 0; i-- {
+	//	buffCfg := buff.NewBuffCfg(&octets)
+	//	allBuffCfgs[buffCfg.Id_] = *buffCfg
+	//}
+	//
+	//fmt.Println(allBuffCfgs)
+
+	//cfgMgr := gen.CfgMgr{}
+	//cfgMgr.Load("gen/config/")
 }
 
 func TestCfg() {
-	cfg := skill.SkillCfg{}
-	fmt.Println(cfg)
+
+	//skillCfg := gen.GetSkillCfg(123)
+	//fmt.Println(skillCfg)
+	//
+	//
+	//cfg := skill.SkillCfg{}
+	//fmt.Println(cfg)
+
+	fmt.Println(" TestCfg ")
+	for _, v := range cfg.Questcfg {
+		fmt.Println(v)
+	}
 }
 
 func startClient() {

@@ -12,6 +12,12 @@ type Octets struct {
 	End   int32
 }
 
+func Wrap(bytes []byte) *Octets {
+	octets := Octets{}
+	octets.Data = bytes
+	return &octets
+}
+
 func (b *Octets) length() int32 {
 	return int32(len(b.Data))
 }
@@ -218,9 +224,9 @@ func (b *Octets) ReadInt() int32 {
 
 	log(" Read h = ", h, reflect.TypeOf(h))
 
-	t := int32(h) << 24
+	//t := int32(h) << 24
 
-	log(" Read t = ", t, reflect.TypeOf(t))
+	//log(" Read t = ", t, reflect.TypeOf(t))
 
 	if h < 0x80 {
 		b.Begin++
